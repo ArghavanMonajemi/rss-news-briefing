@@ -1,0 +1,22 @@
+[project]
+name = "rss-news-briefing"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Arghavan", email = "monajemi.am@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "feedparser>=6.0.14",
+    "openai>=3.37.0",
+    "python-decouple>=3.8",
+    "trafilatura>=2.3.1",
+]
+
+[project.scripts]
+rss-news-briefing = "rss_news_briefing:main"
+
+[build-system]
+requires = ["uv_build>=0.13.5,<0.14.0"]
+build-backend = "uv_build"
