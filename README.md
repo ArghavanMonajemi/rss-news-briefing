@@ -40,7 +40,20 @@ The briefing contains:
 ## Example output
 
 ```
-(paste a sample briefing from one of your runs here)
+This week’s culture coverage revisits women’s lives and power across history, from medieval accusations and legal action to Renaissance art. In film, an unconventional romance is stirring online interest, while a Spanish drama and a new film about Elizabeth Holmes draw attention for very different reasons.
+
+### History, power and women’s lives
+- Eleanor Cobham’s 1441 conviction for treasonable witchcraft may have been political manoeuvring, though novelist Philippa Gregory portrays her as an active practitioner. [BBC](https://www.bbc.com/culture/article/20261022-the-15th-century-duchess-charged-with-treason-and-witchcraft?ocid=global_culture_rss)
+- Records of Jehanne’s 1472 assault case reveal a medieval woman pursuing justice in Dijon, challenging assumptions about women’s ability to bring accusations. [BBC](https://www.bbc.com/culture/article/20261019-the-true-story-of-a-15th-century-sexual-assault-survivors-quest-for-justice?ocid=global_culture_rss)
+- Renaissance painter Lavinia Fontana won major commissions and painted suggestive female nudes, pioneering a path for professional women artists. [BBC](https://www.bbc.com/culture/article/20261015-the-trailblazing-erotic-art-of-lavinia-fontana?ocid=global_culture_rss)
+- A BBC account of the Cuban missile crisis credits John and Robert Kennedy’s diplomacy with helping avert nuclear war, drawing on interviews with insiders. [BBC](https://www.bbc.com/culture/article/20261015-the-men-who-averted-the-1962-cuban-missile-crisis?ocid=global_culture_rss)
+
+### Films drawing attention
+- *Wicker*, about a woman commissioning a woven husband, has sparked an online frenzy over its bizarre romantic premise and Alexander Skarsgård’s role. [BBC](https://www.bbc.com/culture/article/20261021-why-women-are-going-wild-for-freaky-film-romance-wicker?ocid=global_culture_rss)
+- Spanish drama *La Bola Negra*, following three gay men across a century, is emerging as a potential best-picture contender. [BBC](https://www.bbc.com/culture/article/20261013-why-la-bola-negra-could-win-the-oscars-top-prize?ocid=global_culture_rss)
+- A new film explores why Theranos founder Elizabeth Holmes remains a compelling public figure after her conviction for defrauding investors. [BBC](https://www.bbc.com/culture/article/20261014-why-fraudster-elizabeth-holmes-still-fascinates?ocid=global_culture_rss)
+
+**Worth watching:** Whether *La Bola Negra* can turn awards buzz into a best-picture win.
 ```
 
 ## Requirements
