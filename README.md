@@ -1,47 +1,49 @@
 # RSS News Briefing
  
-A small Python command-line tool that reads a news site's RSS feed, extracts the full text of each article, and asks an LLM to write a short, themed briefing with source links. It also reports how many tokens each run used and what it roughly cost.
+A small Python command-line tool that reads several news sites' RSS feeds, extracts the full text of each article, and asks an LLM to write one short, themed briefing with source links. It also reports how many tokens each run used and what it roughly cost.
  
-This is my first AI engineering project. It started as a CSV of pasted headlines summarized with a single API call, and grew into a pipeline that pulls live articles from a feed.
-
+This is my first AI engineering project. It started as a CSV of pasted headlines summarized with a single API call, and grew into a pipeline that pulls live articles from multiple feeds.
+ 
 ## How it works
  
 ```
-RSS feed ──► feedparser ──► article list (title, link, date, summary)
-                                  │
-                                  ▼
-                 trafilatura (fetch + extract full text,
-                 falls back to the RSS summary on failure)
-                                  │
-                                  ▼
-            XML-structured input (escaped, text truncated per article)
-                                  │
-                                  ▼
-                       LLM call (OpenAI API)
-                                  │
-                                  ▼
-             Briefing printed + token usage and cost estimate logged
+RSS feeds ──► feedparser ──► articles per feed (capped, with source + timestamp)
+                                   │
+                                   ▼
+                  trafilatura (fetch + extract full text,
+                  falls back to the RSS summary on failure)
+                                   │
+                                   ▼
+            combine ──► sort newest first ──► deduplicate by link
+                                   │
+                                   ▼
+             XML-structured input (escaped, text truncated per article)
+                                   │
+                                   ▼
+                        LLM call (OpenAI API)
+                                   │
+                                   ▼
+              Briefing printed + token usage and cost estimate logged
 ```
  
-1. **Fetch the feed** with [`feedparser`](https://github.com/kurtmckee/feedparser). The script currently uses the BBC Culture feed.
+1. **Fetch the feeds** with [`feedparser`](https://github.com/kurtmckee/feedparser). Each feed contributes at most `MAX_PER_FEED` articles so no single source dominates. A feed that fails or comes back empty is logged and skipped, and the run continues with the others.
 2. **Extract article text** with [`trafilatura`](https://github.com/adbar/trafilatura), which pulls the main content out of each page and drops navigation, ads, and footers. If a page can't be fetched or extracted, the script falls back to the RSS summary.
-3. **Build the input.** Each article is wrapped in XML tags (`id`, `title`, `published`, `link`, `summary`, `text`) so the model can tell the pieces apart. Special characters are escaped, and article text is truncated to keep token usage under control.
-4. **Summarize.** The rules are sent as separate instructions and the articles as the input. The model is told to use only the provided articles, merge duplicate stories, flag conflicting reports, skip trivial items, and cite sources by link.
-5. **Report usage.** After the briefing, the script logs input, cached, and output token counts plus an estimated cost.
-
-
+3. **Combine, sort, and deduplicate.** Articles from all feeds are sorted newest first using the feed's parsed timestamp, then duplicates (same link) are removed so the newest copy is kept.
+4. **Build the input.** Each article is wrapped in XML tags (`id`, `title`, `published`, `link`, `source`, `summary`, `text`) so the model can tell the pieces apart. Special characters are escaped, and article text is truncated to keep token usage under control.
+5. **Summarize.** The rules are sent as separate instructions and the articles as the input. The model is told to use only the provided articles, merge duplicate stories, flag conflicting reports, skip trivial items, and cite sources by link.
+6. **Report usage.** After the briefing, the script logs input, cached, and output token counts plus an estimated cost.
 ### Output format
-
+ 
 The briefing contains:
-
+ 
 - A 2-3 sentence overview of the main stories
 - Up to 5 themed sections with 2-4 bullet points each
 - A one-line "worth watching" note
 - Under 300 words, with source links
-The briefing goes to stdout and the usage line goes to stderr (via `logging`), so the briefing can be piped or redirected on its own.
-
-
+The briefing goes to stdout and the log messages go to stderr (via `logging`), so the briefing can be piped or redirected on its own.
+ 
 ## Example output
+
 
 ```
 This week’s culture coverage revisits women’s lives and power across history, from medieval accusations and legal action to Renaissance art. In film, an unconventional romance is stirring online interest, while a Spanish drama and a new film about Elizabeth Holmes draw attention for very different reasons.
@@ -95,25 +97,28 @@ uv run main.py
 The briefing is printed to the terminal, followed by a usage summary.
 
 
-hese settings are constants at the top of `main.py`:
+### Configuration
+ 
+These settings are constants at the top of `main.py`:
  
 | Setting | Constant | Default |
 |---|---|---|
-| Feed URL | `FEED_URL` | BBC Culture RSS |
+| Feed URLs | `FEEDS` | BBC Culture, NYT World, TechCrunch |
+| Max articles taken from each feed | `MAX_PER_FEED` | `10` (`None` for no limit) |
 | Characters of text per article | `MAX_CHARS` | `1500` |
 | Model | `MODEL` | set in the script |
 | Prices (USD per 1M tokens) | `INPUT_PRICE`, `CACHED_INPUT_PRICE`, `OUTPUT_PRICE` | see script |
 | Prompt and rules | `INSTRUCTIONS` | see script |
  
-To summarize a different site, point `FEED_URL` at any RSS or Atom feed.
+To use other sources, edit the `FEEDS` list with any RSS or Atom feed URLs.
  
-> **Cost figures are estimates.** They are calculated from the price constants in the script, which may become outdated. Check your provider's pricing page and update them when needed.
+> **Cost figures are estimates.** They are calculated from the price constants in the script, which may become outdated. Check your provider's pricing page and update them when needed. More feeds mean more tokens, so watch the usage line when you add sources.
  
 ## Project structure
  
 ```
 rss-news-briefing/
-├── main.py          # fetching, extraction, prompt building, summarization, cost logging
+├── main.py          # fetching, extraction, dedup, prompt building, summarization, cost logging
 ├── pyproject.toml   # project metadata and dependencies (uv)
 ├── uv.lock          # locked dependency versions
 ├── .env             # your API key (not committed)
@@ -125,17 +130,21 @@ rss-news-briefing/
 - **RSS instead of scraping HTML.** Feeds are structured and stable, so there are no custom selectors that break when a site changes its layout.
 - **trafilatura for article bodies.** It works across many sites without per-site code.
 - **Fallback to the feed summary.** One article that fails to download shouldn't crash the whole run.
+- **One bad feed doesn't stop the run.** Failures are logged per feed, and the briefing is built from whatever feeds worked.
+- **Per-feed cap.** Keeps one high-volume source from crowding out the others and bounds token usage.
+- **Sort by parsed timestamp, not the date string.** Date strings sort alphabetically, not chronologically. Articles without a date sink to the bottom.
+- **Sort first, then deduplicate.** When the same link appears twice, the newest copy is kept, and article ids stay sequential.
 - **Truncating article text.** The opening paragraphs carry most of the news, and shorter inputs keep cost and latency down.
 - **Escaped, XML-tagged input.** Clear boundaries between articles make the input easier for the model to use, and escaping keeps the structure valid whatever the headlines contain.
 - **Grounding rules and citations.** Restricting the model to the provided articles and requiring links reduces hallucination and makes claims checkable.
 - **Hardcoded prices instead of scraping a pricing page.** A cost estimate should never be able to break the run or depend on a web page's layout.
-- **Usage on stderr, briefing on stdout.** Keeps the briefing clean for piping, and makes it easy to compare token usage when tuning `MAX_CHARS`.
+- **Usage on stderr, briefing on stdout.** Keeps the briefing clean for piping, and makes it easy to compare token usage when tuning `MAX_CHARS` or `MAX_PER_FEED`.
 ## Roadmap
  
 - [x] Fall back to the RSS summary when an article fails to download or extract
 - [x] Escape special characters before building the XML
 - [x] Log token usage and estimated cost per run
-- [ ] Support multiple feeds in one run
+- [x] Support multiple feeds in one run
 - [ ] Cache fetched articles and summaries to avoid repeat work
 - [ ] Add tests for parsing and prompt building
 - [ ] Summarize each article first, then write the final briefing (map-reduce) for larger batches
