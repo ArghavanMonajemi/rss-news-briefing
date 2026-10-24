@@ -1,14 +1,23 @@
-import logging
-from xml.sax.saxutils import escape
 import calendar
+import hashlib
+import json
+import logging
+import pathlib
+import time
+from xml.sax.saxutils import escape
+
 import feedparser
 from decouple import config
 from openai import OpenAI
 from trafilatura import extract, fetch_url
 
-
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 log = logging.getLogger(__name__)
+
+CACHE_DIR = pathlib.Path(".cache")
+ARTICLES_DIR = pathlib.Path(CACHE_DIR / "articles")
+OUTPUT_DIR = pathlib.Path(CACHE_DIR / "output")
+cache_stats = {"hits": 0, "misses": 0}
 
 
 FEEDS = [
@@ -18,7 +27,9 @@ FEEDS = [
 MODEL = "gpt-6-luna"
 MAX_CHARS = 1500
 MAX_PER_FEED = 10  # Max articles to fetch per feed. Set to None for no limit.
-
+CACHE_TTL_HOURS = (
+    24  # Cache articles for this many hours. Set to None for no expiration.
+)
 # USD per 1M tokens. Last checked 2026-10-24; verify against the pricing page.
 INPUT_PRICE = 0.10
 CACHED_INPUT_PRICE = 0.01
@@ -38,23 +49,60 @@ Write a briefing with:
 Keep it under 300 words."""
 
 
+def url_to_filename(url):
+    """Convert a URL to a safe filename for caching."""
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+
+def cache_article_path(url):
+    return ARTICLES_DIR / f"{url_to_filename(url)}.json"
+
+
+def load_cached_text(url):
+    """Return cached text, or None on a miss, expiry, or unreadable file."""
+    path = cache_article_path(url)
+    try:
+        if CACHE_TTL_HOURS is not None:
+            age = time.time() - path.stat().st_mtime
+            if age > CACHE_TTL_HOURS * 3600:
+                return None
+        return json.loads(path.read_text(encoding="utf-8"))["text"]
+    except FileNotFoundError, json.JSONDecodeError, KeyError:
+        return None
+
+
+def save_cached_article_text(url, text):
+    ARTICLES_DIR.mkdir(exist_ok=True)
+    cache_article_path(url).write_text(json.dumps({"text": text}), encoding="utf-8")
+
+
 def get_articles(feed_url):
     feed = feedparser.parse(feed_url)
-    status = feed.get("status") 
-    if status and status >= 400: 
-        log.error("%s returned HTTP %s", feed_url, status) 
-        return [] 
-    if feed.bozo and not feed.entries: 
-        log.error("Could not read %s: %s", feed_url, feed.get("bozo_exception")) 
-        return [] 
-
+    status = feed.get("status")
+    if status and status >= 400:
+        log.error("%s returned HTTP %s", feed_url, status)
+        return []
+    if feed.bozo and not feed.entries:
+        log.error("Could not read %s: %s", feed_url, feed.get("bozo_exception"))
+        return []
 
     articles = []
     for entry in feed.entries[:MAX_PER_FEED]:
         summary = entry.get("summary", "")
-        downloaded = fetch_url(entry.link)
-        # fetch_url/extract return None on failure, so fall back to the RSS summary
-        text = (extract(downloaded) if downloaded else None) or summary
+        text = load_cached_text(entry.link)
+        if text is not None:
+            cache_stats["hits"] += 1
+        else:
+            cache_stats["misses"] += 1
+            downloaded = fetch_url(entry.link)
+            text = extract(downloaded) if downloaded else None
+            if text:
+                save_cached_article_text(
+                    entry.link, text
+                )  # cache real extractions only
+            else:
+                text = summary  # fallback, deliberately not cached
+
         parsed = entry.get("published_parsed")
         timestamp = calendar.timegm(parsed) if parsed else 0
         articles.append(
@@ -100,7 +148,31 @@ def calculate_cost(usage):
     ) / 1_000_000
 
 
+def briefing_cache_path(articles_xml, model=MODEL, instructions=INSTRUCTIONS):
+    """Cache key covers everything that affects the output."""
+    key = json.dumps([model, instructions, articles_xml]).encode("utf-8")
+    return OUTPUT_DIR / f"{hashlib.sha256(key).hexdigest()}.txt"
+
+
+def load_cached_briefing(path):
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+
+
+def save_cached_briefing(path, briefing):
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    path.write_text(briefing, encoding="utf-8")
+
+
 def summarize(articles_xml):
+    path = briefing_cache_path(articles_xml)
+    cached = load_cached_briefing(path)
+    if cached is not None:
+        log.info("Using cached briefing (no API call)")
+        return cached, None
+
     client = OpenAI(api_key=config("API-KEY"))
     response = client.responses.create(
         model=MODEL,
@@ -108,6 +180,7 @@ def summarize(articles_xml):
         input=articles_xml,
         store=True,
     )
+    save_cached_briefing(path, response.output_text)
     return response.output_text, response.usage
 
 
@@ -140,19 +213,20 @@ def main():
         log.error("No articles found in any feed.")
         return
 
+    log.info("cache: %d hits, %d misses", cache_stats["hits"], cache_stats["misses"])
+
     articles.sort(key=lambda x: x["timestamp"], reverse=True)
     articles = deduplicate_articles(articles)
     briefing, usage = summarize(build_articles_xml(articles))
-
     print(briefing)
-
-    log.info(
-        "\ntokens: %d in (%d cached), %d out | est. cost: $%.6f",
-        usage.input_tokens,
-        usage.input_tokens_details.cached_tokens,
-        usage.output_tokens,
-        calculate_cost(usage),
-    )
+    if usage is not None:
+        log.info(
+            "\ntokens: %d in (%d cached), %d out | est. cost: $%.6f",
+            usage.input_tokens,
+            usage.input_tokens_details.cached_tokens,
+            usage.output_tokens,
+            calculate_cost(usage),
+        )
 
 
 if __name__ == "__main__":
