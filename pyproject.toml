@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "fastapi[standard]>=0.162.0",
     "feedparser>=6.0.14",
     "openai>=3.37.0",
     "python-decouple>=3.8",
