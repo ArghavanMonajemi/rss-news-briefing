@@ -14,6 +14,7 @@ MAX_PER_FEED = 10  # Max articles to fetch per feed. Set to None for no limit.
 CACHE_TTL_HOURS = (
     24  # Cache articles for this many hours. Set to None for no expiration.
 )
+BRIEFING_TTL_MINUTES = 10  # how long /briefing reuses its last result
 # USD per 1M tokens. Last checked 2026-10-24; verify against the pricing page.
 INPUT_PRICE = 0.10
 CACHED_INPUT_PRICE = 0.01

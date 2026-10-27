@@ -7,15 +7,16 @@ from .cache import load_cached_text, save_cached_article_text
 
 log = logging.getLogger(__name__)
 
+
 def fetch_articles(feed_url):
     feed = feedparser.parse(feed_url)
     status = feed.get("status")
     if status and status >= 400:
         log.error("%s returned HTTP %s", feed_url, status)
-        return [],0
+        return [], 0
     if feed.bozo and not feed.entries:
         log.error("Could not read %s: %s", feed_url, feed.get("bozo_exception"))
-        return [],0
+        return [], 0
 
     articles = []
     hits = 0
@@ -49,6 +50,7 @@ def fetch_articles(feed_url):
         )
     return articles, hits
 
+
 def deduplicate_articles(articles):
     """Remove duplicate articles based on their link."""
     seen_links = set()
@@ -59,5 +61,6 @@ def deduplicate_articles(articles):
             unique_articles.append(article)
     return unique_articles
 
+
 def sort_articles(articles):
-    return sorted(articles,key=lambda x: x["timestamp"], reverse=True)
+    return sorted(articles, key=lambda x: x["timestamp"], reverse=True)
