@@ -1,4 +1,5 @@
 import pytest
+
 from rss_news_briefing.prompt import build_articles_xml
 
 

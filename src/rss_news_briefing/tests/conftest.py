@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+
 from rss_news_briefing import cache
 
 

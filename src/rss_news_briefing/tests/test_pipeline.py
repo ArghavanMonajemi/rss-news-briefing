@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+
 from rss_news_briefing import llm, pipeline
 from rss_news_briefing.pipeline import NoArticlesError, generate_briefing
 

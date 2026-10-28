@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 from openai import OpenAIError
+
 from rss_news_briefing import api
 from rss_news_briefing.pipeline import BriefingResult, NoArticlesError, UsageInfo
 
