@@ -14,7 +14,7 @@ class BriefingResponse(BaseModel):
     article_count: int
     sources: list[str]
     cached: bool
-    generated_at : datetime
+    generated_at: datetime
     usage: UsageResponse | None = None
 
 
