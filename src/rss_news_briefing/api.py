@@ -7,7 +7,7 @@ import threading
 import time
 from .config import BRIEFING_TTL_MINUTES
 from .schemas import BriefingResponse, UsageResponse, HealthResponse
-
+from openai import OpenAIError
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ def _to_response(result: BriefingResult, cached: bool) -> BriefingResponse:
             input_tokens=result.usage.input_tokens,
             cached_tokens=result.usage.cached_tokens,
             output_tokens=result.usage.output_tokens,
-            estimated_cost=result.usage.cost,
+            estimated_cost_usd=result.usage.cost,
         )
     return BriefingResponse(
         briefing=result.briefing,
@@ -79,6 +79,9 @@ def get_briefing():
             raise HTTPException(
                 status_code=503, detail="The summarization service failed."
             )
+        except OpenAIError:
+            log.exception("LLM request failed")
+            raise HTTPException(status_code=502,detail="The summarization service failed.")
         _latest = (time.monotonic(), result)
 
     return _to_response(result=result, cached=False)

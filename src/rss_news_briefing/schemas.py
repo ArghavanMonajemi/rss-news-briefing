@@ -6,7 +6,7 @@ class UsageResponse(BaseModel):
     input_tokens: int
     cached_tokens: int
     output_tokens: int
-    estimated_cost: float
+    estimated_cost_usd: float
 
 
 class BriefingResponse(BaseModel):
