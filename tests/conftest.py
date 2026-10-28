@@ -14,6 +14,7 @@ def isolated_cache(tmp_path, monkeypatch):
     """
     monkeypatch.setattr(cache, "ARTICLES_DIR", tmp_path / "articles")
     monkeypatch.setattr(cache, "OUTPUT_DIR", tmp_path / "output")
+    monkeypatch.setattr(cache, "SUMMARIES_DIR", tmp_path / "summaries")
     monkeypatch.setattr(cache, "CACHE_TTL_HOURS", 24)
 
 

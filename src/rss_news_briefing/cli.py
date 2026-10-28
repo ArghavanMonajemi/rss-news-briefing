@@ -15,6 +15,7 @@ def main():
         return
 
     log.info("cache: %d hits, %d misses", result.cache_hits, result.cache_misses)
+    log.info("mode: %s", result.mode)
     print(result.briefing)
     if usage := result.usage is not None:
         log.info(

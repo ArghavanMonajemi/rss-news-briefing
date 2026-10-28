@@ -17,6 +17,8 @@ class BriefingResponse(BaseModel):
     cached: bool
     generated_at: datetime
     usage: UsageResponse | None = None
+    mode: str  # "single" or "map-reduce"
+    failed_summaries: int
 
 
 class HealthResponse(BaseModel):

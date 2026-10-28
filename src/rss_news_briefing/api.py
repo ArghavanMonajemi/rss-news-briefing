@@ -54,6 +54,8 @@ def _to_response(result: BriefingResult, cached: bool) -> BriefingResponse:
         generated_at=result.generated_at,
         cached=cached,
         usage=usage,
+        mode=result.mode,
+        failed_summaries=result.failed_summaries,
     )
 
 

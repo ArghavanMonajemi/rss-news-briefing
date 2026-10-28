@@ -2,7 +2,7 @@ import hashlib
 import json
 import time
 
-from .config import ARTICLES_DIR, CACHE_TTL_HOURS, OUTPUT_DIR
+from .config import ARTICLES_DIR, CACHE_TTL_HOURS, OUTPUT_DIR, SUMMARIES_DIR
 
 
 def url_to_filename(url):
@@ -48,3 +48,21 @@ def load_cached_briefing(path):
 def save_cached_briefing(path, briefing):
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(briefing, encoding="utf-8")
+
+
+def summary_cache_path(article_xml, model, instructions):
+    """Cache key covers everything that affects one article's summary."""
+    key = json.dumps([model, instructions, article_xml]).encode("utf-8")
+    return SUMMARIES_DIR / f"{hashlib.sha256(key).hexdigest()}.txt"
+
+
+def load_cached_summary(path):
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+
+
+def save_cached_summary(path, summary):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(summary, encoding="utf-8")
