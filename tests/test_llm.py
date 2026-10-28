@@ -45,7 +45,7 @@ def fake_api(monkeypatch, make_usage):
     usage = make_usage()
 
     class FakeOpenAI:
-        def __init__(self, api_key=None):
+        def __init__(self, api_key=None, **kwargs):
             self.api_key = api_key
             self.responses = SimpleNamespace(create=self.create)
 
