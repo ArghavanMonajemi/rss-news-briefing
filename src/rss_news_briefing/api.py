@@ -1,13 +1,15 @@
-from fastapi import FastAPI, HTTPException
 import logging
-from decouple import config
-from contextlib import asynccontextmanager
-from .pipeline import BriefingResult, generate_briefing, NoArticlesError
 import threading
 import time
-from .config import BRIEFING_TTL_MINUTES
-from .schemas import BriefingResponse, UsageResponse, HealthResponse
+from contextlib import asynccontextmanager
+
+from decouple import config
+from fastapi import FastAPI, HTTPException
 from openai import OpenAIError
+
+from .config import BRIEFING_TTL_MINUTES
+from .pipeline import BriefingResult, NoArticlesError, generate_briefing
+from .schemas import BriefingResponse, HealthResponse, UsageResponse
 
 log = logging.getLogger(__name__)
 
@@ -81,7 +83,9 @@ def get_briefing():
             )
         except OpenAIError:
             log.exception("LLM request failed")
-            raise HTTPException(status_code=502,detail="The summarization service failed.")
+            raise HTTPException(
+                status_code=502, detail="The summarization service failed."
+            )
         _latest = (time.monotonic(), result)
 
     return _to_response(result=result, cached=False)

@@ -2,7 +2,6 @@ import os
 import time
 
 import pytest
-
 from rss_news_briefing import cache
 
 URL = "https://example.com/article"

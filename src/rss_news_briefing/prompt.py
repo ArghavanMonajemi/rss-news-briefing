@@ -1,6 +1,6 @@
-from .config import MAX_CHARS
 from xml.sax.saxutils import escape
 
+from .config import MAX_CHARS
 
 INSTRUCTIONS = """You are a news analyst who writes concise briefings.
 Rules:

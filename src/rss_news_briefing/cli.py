@@ -1,6 +1,6 @@
 import logging
-from .pipeline import generate_briefing, NoArticlesError
 
+from .pipeline import NoArticlesError, generate_briefing
 
 log = logging.getLogger(__name__)
 

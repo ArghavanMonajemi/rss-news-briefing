@@ -1,10 +1,10 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from .config import FEEDS
-from .feeds import fetch_articles, sort_articles, deduplicate_articles
-from .llm import summarize_articles, calculate_cost
+from .feeds import deduplicate_articles, fetch_articles, sort_articles
+from .llm import calculate_cost, summarize_articles
 from .prompt import build_articles_xml
 
 log = logging.getLogger(__name__)
@@ -72,5 +72,5 @@ def generate_briefing():
         usage=usage_info,
         cache_hits=hits,
         cache_misses=misses,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )

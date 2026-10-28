@@ -1,9 +1,11 @@
-from .config import INPUT_PRICE, CACHED_INPUT_PRICE, OUTPUT_PRICE, MODEL
-from .prompt import INSTRUCTIONS
-from .cache import briefing_cache_path, load_cached_briefing, save_cached_briefing
 import logging
+
 from decouple import config
 from openai import OpenAI
+
+from .cache import briefing_cache_path, load_cached_briefing, save_cached_briefing
+from .config import CACHED_INPUT_PRICE, INPUT_PRICE, MODEL, OUTPUT_PRICE
+from .prompt import INSTRUCTIONS
 
 log = logging.getLogger(__name__)
 

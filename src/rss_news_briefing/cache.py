@@ -1,7 +1,8 @@
-from .config import ARTICLES_DIR, OUTPUT_DIR, CACHE_TTL_HOURS
 import hashlib
 import json
 import time
+
+from .config import ARTICLES_DIR, CACHE_TTL_HOURS, OUTPUT_DIR
 
 
 def url_to_filename(url):

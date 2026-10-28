@@ -1,12 +1,11 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 from openai import OpenAIError
-
 from rss_news_briefing import api
 from rss_news_briefing.pipeline import BriefingResult, NoArticlesError, UsageInfo
 
@@ -19,7 +18,7 @@ def make_result(usage=None):
         usage=usage,
         cache_hits=1,
         cache_misses=2,
-        generated_at=datetime(2026, 10, 28, 12, 0, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 10, 28, 12, 0, tzinfo=UTC),
     )
 
 
@@ -175,9 +174,8 @@ def test_startup_fails_when_the_api_key_is_missing(monkeypatch):
 
     monkeypatch.setattr(api, "config", missing)
 
-    with pytest.raises(RuntimeError):
-        with TestClient(api.app):
-            pass
+    with pytest.raises(RuntimeError), TestClient(api.app):
+        pass
 
 
 def test_startup_succeeds_when_the_api_key_is_present(monkeypatch):

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 import feedparser
 import pytest
 from feedparser import FeedParserDict
-
 from rss_news_briefing import cache, feeds
 
 FEED_URL = "https://example.com/feed.xml"

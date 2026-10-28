@@ -1,9 +1,11 @@
-import feedparser
-from trafilatura import extract, fetch_url
 import calendar
 import logging
-from .config import MAX_PER_FEED
+
+import feedparser
+from trafilatura import extract, fetch_url
+
 from .cache import load_cached_text, save_cached_article_text
+from .config import MAX_PER_FEED
 
 log = logging.getLogger(__name__)
 
