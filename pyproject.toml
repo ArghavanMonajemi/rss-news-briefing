@@ -11,6 +11,7 @@ dependencies = [
     "fastapi[standard]>=0.162.0",
     "feedparser>=6.0.14",
     "openai>=3.37.0",
+    "pydantic>=2.14.1",
     "python-decouple>=3.8",
     "requests>=2.34.2",
     "trafilatura>=2.3.1",

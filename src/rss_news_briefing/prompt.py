@@ -4,18 +4,28 @@ from .config import MAX_CHARS
 
 # Used for the single-call mode (full article texts) and for the final
 # "reduce" call in map-reduce mode (one short summary per article).
+# The answer must be JSON that matches models.Briefing.
 INSTRUCTIONS = """You are a news analyst who writes concise briefings.
 Rules:
 - Use only information from the provided articles. Do not add outside facts.
 - Group related stories into themes, and merge duplicates covering the same event.
-- Cite sources by including their links.
-- If articles conflict, say so instead of picking one.
+- Every bullet must cite at least one source. A source is the exact URL from an article's <link> tag. Never invent, shorten, or change a URL.
+- If articles conflict, say so in the bullet instead of picking one.
 - Skip trivial or promotional items.
-Write a briefing with:
-1. A 2-3 sentence overview of the main stories.
-2. Up to 5 themed sections, each with 2-4 bullet points.
-3. A one-line "worth watching" note at the end.
-Keep it under 300 words."""
+Respond with a single JSON object and nothing else: no markdown code fences and no commentary. Use exactly this shape:
+{
+  "overview": "2-3 sentences on the main stories",
+  "themes": [
+    {
+      "title": "short theme title",
+      "bullets": [
+        {"text": "one sentence", "sources": ["https://example.com/article"]}
+      ]
+    }
+  ],
+  "worth_watching": "one line"
+}
+Use at most 5 themes and between 1 and 4 bullets per theme. Keep the whole briefing under 300 words."""
 
 # Used for the per-article "map" calls.
 MAP_INSTRUCTIONS = """You summarize one news article for a briefing editor.
@@ -80,3 +90,14 @@ def build_summaries_xml(articles):
         )
     parts.append("</articles>")
     return "\n".join(parts)
+
+
+def build_retry_input(articles_xml, previous_output, error_text):
+    """Input for the second attempt after the first answer failed validation."""
+    return (
+        f"{articles_xml}\n\n"
+        "Your previous answer was rejected.\n"
+        f"<previous_answer>{escape(previous_output[:4000])}</previous_answer>\n"
+        f"<validation_error>{escape(error_text[:1000])}</validation_error>\n"
+        "Return the corrected JSON object only, in the required shape."
+    )

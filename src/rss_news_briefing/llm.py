@@ -23,8 +23,10 @@ from .config import (
     MAX_WORKERS,
     MODEL,
     OUTPUT_PRICE,
+    MAX_FORMAT_RETRIES,
 )
 from .prompt import INSTRUCTIONS, MAP_INSTRUCTIONS, build_map_input
+from .models import BriefingFormatError, parse_briefing
 
 log = logging.getLogger(__name__)
 
@@ -52,25 +54,55 @@ def _make_client():
 
 
 def summarize_articles(articles_xml):
-    """One LLM call that writes the briefing from the given XML.
+    """One LLM call (plus at most MAX_FORMAT_RETRIES retries) that writes the briefing.
 
-    Returns (briefing, usage). usage is None when the briefing came from cache.
+    Returns (briefing, usages): a validated Briefing and a list with the usage
+    of every API call made. The list is empty when the briefing came from cache.
+    Raises BriefingFormatError if no attempt produced valid JSON.
     """
     path = briefing_cache_path(articles_xml, MODEL, INSTRUCTIONS)
     cached = load_cached_briefing(path)
     if cached is not None:
-        log.info("Using cached briefing (no API call)")
-        return cached, None
+        try:
+            briefing = parse_briefing(cached)
+        except ValidationError:
+            log.warning("Ignoring an unreadable cached briefing")
+        else:
+            log.info("Using cached briefing (no API call)")
+            return briefing, []
 
     client = _make_client()
-    response = client.responses.create(
-        model=MODEL,
-        instructions=INSTRUCTIONS,
-        input=articles_xml,
-        store=True,
-    )
-    save_cached_briefing(path, response.output_text)
-    return response.output_text, response.usage
+    usages = []
+    model_input = articles_xml
+    attempts = 1 + MAX_FORMAT_RETRIES
+    for attempt in range(1, attempts + 1):
+        response = client.responses.create(
+            model=MODEL,
+            instructions=INSTRUCTIONS,
+            input=model_input,
+            store=True,
+        )
+        usages.append(response.usage)
+        try:
+            briefing = parse_briefing(response.output_text)
+        except ValidationError as error:
+            log.warning(
+                "Briefing failed validation (attempt %d of %d): %s",
+                attempt,
+                attempts,
+                str(error).splitlines()[0],
+            )
+            last_error = error
+            model_input = build_retry_input(
+                articles_xml, response.output_text, str(error)
+            )
+            continue
+        save_cached_briefing(path, briefing.model_dump_json())  # only valid ones
+        return briefing, usages
+
+    raise BriefingFormatError(
+        f"The model did not return a valid briefing after {attempts} attempt(s)."
+    ) from last_error
 
 
 def _fallback_summary(article):
@@ -86,8 +118,8 @@ def _summarize_one(client, article, article_xml, path):
             input=article_xml,
             store=False,  # no need to keep dozens of intermediate responses
         )
-    except OpenAIError:
-        log.warning("Could not summarize %s; using the feed summary", article["link"])
+    except OpenAIError as error:
+        log.warning("Could not summarize %s; using the feed summary", article["link"],type(error).__name__,)
         return MapResult(_fallback_summary(article), usage=None, failed=True)
 
     summary = response.output_text.strip()

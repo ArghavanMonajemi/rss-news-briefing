@@ -1,7 +1,7 @@
 import logging
 
 from .pipeline import NoArticlesError, generate_briefing
-
+from .render import render_text
 log = logging.getLogger(__name__)
 
 
@@ -16,7 +16,7 @@ def main():
 
     log.info("cache: %d hits, %d misses", result.cache_hits, result.cache_misses)
     log.info("mode: %s", result.mode)
-    print(result.briefing)
+    print(render_text(result.briefing))
     if usage := result.usage is not None:
         log.info(
             "\ntokens: %d in (%d cached), %d out | est. cost: $%.6f",

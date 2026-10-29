@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
+from rss_news_briefing.models import Briefing
 
 
 class UsageResponse(BaseModel):
@@ -11,7 +12,8 @@ class UsageResponse(BaseModel):
 
 
 class BriefingResponse(BaseModel):
-    briefing: str
+    briefing: Briefing
+    unknown_sources: list[str]
     article_count: int
     sources: list[str]
     cached: bool
