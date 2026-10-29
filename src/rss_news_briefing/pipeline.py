@@ -1,12 +1,13 @@
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timezone
-from .models import Briefing
+from datetime import UTC, datetime
+
 from .config import FEEDS, MAP_REDUCE_THRESHOLD
 from .feeds import deduplicate_articles, fetch_articles, sort_articles
-from .llm import calculate_cost, summarize_articles, summarize_each
-from .prompt import build_articles_xml, build_summaries_xml
 from .grounding import find_unknown_sources
+from .llm import calculate_cost, summarize_articles, summarize_each
+from .models import Briefing
+from .prompt import build_articles_xml, build_summaries_xml
 
 log = logging.getLogger(__name__)
 
@@ -111,7 +112,7 @@ def generate_briefing():
         usage=_usage_info(raw_usages),
         cache_hits=hits,
         cache_misses=misses,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         mode=mode,
         failed_summaries=failed_summaries,
         input_links=input_links,

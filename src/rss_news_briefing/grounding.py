@@ -90,12 +90,14 @@ def check_briefing(briefing, input_links):
 def format_report(report):
     lines = [
         "Briefing evaluation",
-        f"  themes: {report.theme_count}, bullets: {report.bullet_count}",
-        f"  articles given to the model: {report.input_link_count}",
-        f"  distinct links cited: {report.cited_count} "
-        f"(coverage {report.coverage:.0%})",
-        f"  links cited that were not in the input: {len(report.unknown_sources)}",
-        f"  result: {'PASS' if report.passed else 'FAIL'}",
+        f" themes: {report.theme_count}, bullets: {report.bullet_count}",
+        f" articles given to the model: {report.input_link_count}",
+        (
+            f" distinct links cited: {report.cited_count} "
+            f"(coverage {report.coverage:.0%})"
+        ),
+        f" links cited that were not in the input: {len(report.unknown_sources)}",
+        f" result: {'PASS' if report.passed else 'FAIL'}",
     ]
     if report.unknown_sources:
         lines += ["", "Unknown links (possible hallucinations):"]

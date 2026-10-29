@@ -5,6 +5,7 @@ from typing import Any
 
 from decouple import config
 from openai import OpenAI, OpenAIError
+from pydantic import ValidationError
 
 from .cache import (
     briefing_cache_path,
@@ -20,13 +21,13 @@ from .config import (
     LLM_MAX_RETRIES,
     LLM_TIMEOUT_SECONDS,
     MAP_MAX_SUMMARY_CHARS,
+    MAX_FORMAT_RETRIES,
     MAX_WORKERS,
     MODEL,
     OUTPUT_PRICE,
-    MAX_FORMAT_RETRIES,
 )
-from .prompt import INSTRUCTIONS, MAP_INSTRUCTIONS, build_map_input
 from .models import BriefingFormatError, parse_briefing
+from .prompt import INSTRUCTIONS, MAP_INSTRUCTIONS, build_map_input, build_retry_input
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +120,11 @@ def _summarize_one(client, article, article_xml, path):
             store=False,  # no need to keep dozens of intermediate responses
         )
     except OpenAIError as error:
-        log.warning("Could not summarize %s; using the feed summary", article["link"],type(error).__name__,)
+        log.warning(
+            "Could not summarize %s (%s); using the feed summary",
+            article["link"],
+            type(error).__name__,
+        )
         return MapResult(_fallback_summary(article), usage=None, failed=True)
 
     summary = response.output_text.strip()

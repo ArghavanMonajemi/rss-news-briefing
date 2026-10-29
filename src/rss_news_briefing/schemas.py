@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel
+
 from rss_news_briefing.models import Briefing
 
 

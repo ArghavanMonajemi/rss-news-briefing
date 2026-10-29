@@ -2,6 +2,7 @@ import logging
 
 from .pipeline import NoArticlesError, generate_briefing
 from .render import render_text
+
 log = logging.getLogger(__name__)
 
 

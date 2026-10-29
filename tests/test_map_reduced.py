@@ -302,18 +302,20 @@ def test_fallback_uses_the_start_of_the_text_when_the_feed_has_no_summary(
 
 
 @pytest.fixture
-def env(monkeypatch):
+def env(monkeypatch, make_briefing):
     """Fake feeds and both LLM steps, so only the pipeline's own logic runs.
 
     Set `env.articles` before calling generate_briefing().
     `env.map_results` overrides what the map step returns.
-    `env.reduce_usage` is the usage the final call reports.
+    `env.reduce_usages` is the list of usages the final call reports.
+    `env.briefing` is the Briefing the final call returns.
     `env.map_inputs` / `env.xml_seen` record what each step received.
     """
     state = SimpleNamespace(
         articles=[],
         map_results=None,
-        reduce_usage=None,
+        briefing=make_briefing(),
+        reduce_usages=[],
         map_inputs=[],
         xml_seen=[],
     )
@@ -329,7 +331,7 @@ def env(monkeypatch):
 
     def fake_summarize_articles(xml):
         state.xml_seen.append(xml)
-        return "the briefing", state.reduce_usage
+        return state.briefing, state.reduce_usages
 
     monkeypatch.setattr(pipeline, "FEEDS", ["feed-a"])
     monkeypatch.setattr(pipeline, "MAP_REDUCE_THRESHOLD", 3)
@@ -381,8 +383,12 @@ def test_each_summary_stays_attached_to_its_own_article(env, make_article):
 
     xml = env.xml_seen[0]
     # Newest first: "Story 3" is first, so it gets the first summary, "short 0".
-    assert re.search(r"<title>Story 3</title>.*?<summary>short 0</summary>", xml, re.DOTALL)
-    assert re.search(r"<title>Story 0</title>.*?<summary>short 3</summary>", xml, re.DOTALL)
+    assert re.search(
+        r"<title>Story 3</title>.*?<summary>short 0</summary>", xml, re.DOTALL
+    )
+    assert re.search(
+        r"<title>Story 0</title>.*?<summary>short 3</summary>", xml, re.DOTALL
+    )
 
 
 def test_usage_adds_up_the_map_calls_and_the_final_call(env, make_article, make_usage):
@@ -396,7 +402,7 @@ def test_usage_adds_up_the_map_calls_and_the_final_call(env, make_article, make_
         MapResult("c", second),
         MapResult("d", None, from_cache=True),
     ]
-    env.reduce_usage = final
+    env.reduce_usages = [final]
 
     usage = generate_briefing().usage
 

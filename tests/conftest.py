@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from rss_news_briefing import cache
+from rss_news_briefing.models import Briefing
 
 
 @pytest.fixture(autouse=True)
@@ -48,5 +49,45 @@ def make_usage():
             output_tokens=output_tokens,
             input_tokens_details=SimpleNamespace(cached_tokens=cached_tokens),
         )
+
+    return _make
+
+
+@pytest.fixture
+def make_briefing_dict():
+    """A valid briefing as a plain dict (what the model's JSON decodes to).
+
+    The default bullet cites https://example.com/a, which is also the default
+    link of `make_article`.
+    """
+
+    def _make(**overrides):
+        data = {
+            "overview": "Overview of the day.",
+            "themes": [
+                {
+                    "title": "Theme",
+                    "bullets": [
+                        {
+                            "text": "A bullet.",
+                            "sources": ["https://example.com/a"],
+                        }
+                    ],
+                }
+            ],
+            "worth_watching": "Watch this.",
+        }
+        data.update(overrides)
+        return data
+
+    return _make
+
+
+@pytest.fixture
+def make_briefing(make_briefing_dict):
+    """A validated Briefing object. Override any top-level field."""
+
+    def _make(**overrides):
+        return Briefing.model_validate(make_briefing_dict(**overrides))
 
     return _make

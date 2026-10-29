@@ -8,18 +8,35 @@ from fastapi.testclient import TestClient
 from openai import OpenAIError
 
 from rss_news_briefing import api
+from rss_news_briefing.models import Briefing, BriefingFormatError
 from rss_news_briefing.pipeline import BriefingResult, NoArticlesError, UsageInfo
 
+SAMPLE_BRIEFING = Briefing.model_validate(
+    {
+        "overview": "Overview of the day.",
+        "themes": [
+            {
+                "title": "Theme",
+                "bullets": [
+                    {"text": "A bullet.", "sources": ["https://example.com/a"]}
+                ],
+            }
+        ],
+        "worth_watching": "Watch this.",
+    }
+)
 
-def make_result(usage=None):
+
+def make_result(usage=None, **overrides):
     return BriefingResult(
-        briefing="the briefing",
+        briefing=SAMPLE_BRIEFING,
         article_count=3,
         sources=["Source A", "Source B"],
         usage=usage,
         cache_hits=1,
         cache_misses=2,
         generated_at=datetime(2026, 10, 28, 12, 0, tzinfo=UTC),
+        **overrides,
     )
 
 
@@ -68,13 +85,45 @@ def test_first_briefing_request_runs_the_pipeline(client, fake_generate):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["briefing"] == "the briefing"
     assert body["article_count"] == 3
     assert body["sources"] == ["Source A", "Source B"]
     assert body["generated_at"].startswith("2026-10-28T12:00:00")
     assert body["cached"] is False
     assert body["usage"] is None
     assert fake_generate.calls == 1
+
+
+def test_the_briefing_is_returned_as_structured_json(client, fake_generate):
+    body = client.get("/briefing").json()
+
+    briefing = body["briefing"]
+    assert briefing["overview"] == "Overview of the day."
+    assert briefing["worth_watching"] == "Watch this."
+    assert briefing["themes"][0]["title"] == "Theme"
+    bullet = briefing["themes"][0]["bullets"][0]
+    assert bullet["text"] == "A bullet."
+    assert bullet["sources"] == ["https://example.com/a"]
+
+
+def test_unknown_sources_are_reported_in_the_response(client, fake_generate):
+    fake_generate.result = make_result(unknown_sources=["https://made-up.example/z"])
+
+    body = client.get("/briefing").json()
+
+    assert body["unknown_sources"] == ["https://made-up.example/z"]
+
+
+def test_unknown_sources_is_empty_when_the_briefing_is_grounded(client, fake_generate):
+    assert client.get("/briefing").json()["unknown_sources"] == []
+
+
+def test_response_reports_the_mode_and_failed_summaries(client, fake_generate):
+    fake_generate.result = make_result(mode="map-reduce", failed_summaries=2)
+
+    body = client.get("/briefing").json()
+
+    assert body["mode"] == "map-reduce"
+    assert body["failed_summaries"] == 2
 
 
 def test_usage_is_included_when_there_was_an_api_call(client, fake_generate):
@@ -152,6 +201,14 @@ def test_llm_failure_becomes_502_without_leaking_details(client, fake_generate):
 
     assert response.status_code == 502
     assert "secret internal detail" not in response.text
+
+
+def test_an_invalid_model_answer_becomes_502(client, fake_generate):
+    fake_generate.error = BriefingFormatError("The model did not return valid JSON.")
+
+    response = client.get("/briefing")
+
+    assert response.status_code == 502
 
 
 def test_a_failed_request_is_not_cached(client, fake_generate):

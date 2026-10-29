@@ -2,12 +2,13 @@ import logging
 import threading
 import time
 from contextlib import asynccontextmanager
-from .models import BriefingFormatError
+
 from decouple import config
 from fastapi import FastAPI, HTTPException
 from openai import OpenAIError
 
 from .config import BRIEFING_TTL_MINUTES
+from .models import BriefingFormatError
 from .pipeline import BriefingResult, NoArticlesError, generate_briefing
 from .schemas import BriefingResponse, HealthResponse, UsageResponse
 
@@ -80,9 +81,11 @@ def get_briefing():
             return _to_response(result=result, cached=True)
         try:
             result = generate_briefing()
-        except (OpenAIError, BriefingFormatError):
+        except OpenAIError, BriefingFormatError:
             log.exception("LLM request failed")
-            raise HTTPException(status_code=502, detail="The summarization service failed.")
+            raise HTTPException(
+                status_code=502, detail="The summarization service failed."
+            )
         except NoArticlesError:
             raise HTTPException(
                 status_code=503, detail="The summarization service failed."
